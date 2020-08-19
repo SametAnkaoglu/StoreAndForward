@@ -9,6 +9,7 @@ import csv
 __attributes = {
     "iot_device_id" : 0, # os.environ["iot_device_id"],
     "group"         : "A",
+    "update_version": "0.0",
     "is_runnable"   : True,
     "sensor_a"      : 0.0,
     "sensor_b"      : 0,
@@ -18,12 +19,10 @@ __attributes = {
 __edge_device_connected_with_iot_devices    = False     
 __no_empty_space                            = False     # When an empty space limit is reached 
 __path_to_collected_data                    = "/home/rgx/workspace/University/Verteilte-Systeme/iot-device/collected_data_" + str(__attributes["iot_device_id"]) + ".csv"
+__path_to_home_directory                    = "/home/rgx/workspace/University/Verteilte-Systeme/iot-device/"
 __write_error_in_file_once                  = False
 __published_all_data                        = False
 __registered_at_edge_device                 = False
-
-# Flags for ack from edge-device.
-
 
 # Const
 SENSOR_UPPER_LIMIT                          = 30        # int(os.environ["SENSOR_UPPER_LIMIT"])
@@ -31,65 +30,14 @@ SENSOR_LOWER_LIMIT                          = -30       # int(os.environ["SENSOR
 IOT_DEVICE_CAPACITANCE_MB                   = 0.0025 
 
 # Methods
-def on_connect(client, user__data, flags, rc):
-    """ Prints at successful connection
-        Define the connect callback implementation.
-
-        Expected signature for MQTT v3.1 and v3.1.1 is:
-            connect_callback(client, userdata, flags, rc, properties=None)
-
-        and for MQTT v5.0:
-            connect_callback(client, userdata, flags, reasonCode, properties)
-
-        client:     the client instance for this callback
-        userdata:   the private user data as set in Client() or userdata_set()
-        flags:      response flags sent by the broker
-        rc:         the connection result
-        reasonCode: the MQTT v5.0 reason code: an instance of the ReasonCode class.
-                    ReasonCode may be compared to interger.
-        properties: the MQTT v5.0 properties returned from the broker.  An instance
-                    of the Properties class.
-                    For MQTT v3.1 and v3.1.1 properties is not provided but for compatibility
-                    with MQTT v5.0, we recommand adding properties=None.
-
-        flags is a dict that contains response flags from the broker:
-            flags['session present'] - this flag is useful for clients that are
-                using clean session set to 0 only. If a client with clean
-                session=0, that reconnects to a broker that it has previously
-                connected to, this flag indicates whether the broker still has the
-                session information for the client. If 1, the session still exists.
-
-        The value of rc indicates success or not:
-            0: Connection successful
-            1: Connection refused - incorrect protocol version
-            2: Connection refused - invalid client identifier
-            3: Connection refused - server unavailable
-            4: Connection refused - bad username or password
-            5: Connection refused - not authorised
-            6-255: Currently unused.
-    """    
+def on_connect(client, user__data, flags, rc):   
     print("Connected with result code " + str(rc))
 
 def on_message(client, user__data, msg):
-    """ Gets triggered when an subscribed topic receive an message.
-        It will become an message from the edge device that will change the values and states 
-        of the machine.  
-        Define the message received callback implementation.
-
-        Expected signature is:
-            on_message_callback(client, userdata, message)
-
-        client:     the client instance for this callback
-        userdata:   the private user data as set in Client() or userdata_set()
-        message:    an instance of MQTTMessage.
-                    This is a class with members topic, payload, qos, retain.
-    """
-    
+ 
     # Define global
     global __edge_device_connected_with_iot_devices
     global __registered_at_edge_device
-    # Prints the topic and message
-    print(msg.topic + " " + str(msg.payload))
 
     # Convert to json
     mqtt_msg = json.loads(msg.payload)
@@ -98,21 +46,39 @@ def on_message(client, user__data, msg):
     if msg.topic == "simulation/":
         __edge_device_connected_with_iot_devices = mqtt_msg["edge_device_connected_with_iot_devices"]
 
-    # Msg from cloud
+    # Msg from edge-device
     if __edge_device_connected_with_iot_devices:
 
-        if msg.topic == "edge-device/connection/":
-            __edge_device_connected_with_iot_devices = mqtt_msg["edge_device_connected_with_iot_devices"]
+        if msg.topic == "edge-device/connection/": 
+            __edge_device_connected_with_iot_devices    = mqtt_msg["edge_device_connected_with_iot_devices"]
+            
+            # After disconnect reset flag
+            __registered_at_edge_device                 = False
 
         if msg.topic == "edge-device/delete_data/":
             if int(mqtt_msg["iot_device_id"]) == __attributes["iot_device_id"]:
-                os.remove(__path_to_collected_data)
+                os.rename(__path_to_collected_data, __path_to_home_directory + "backup_" + str(__attributes["iot_device_id"]) + ".csv")
 
         if msg.topic == "edge-device/send_data/":
             if int(mqtt_msg["iot_device_id"]) == __attributes["iot_device_id"]:  
                 __registered_at_edge_device     = True
+                
+                if bool(mqtt_msg["send_backup_file"]) and os.path.isfile(__path_to_home_directory + "backup_" + str(__attributes["iot_device_id"]) + ".csv"):
+                    file                            = open(__path_to_home_directory + "backup_" + str(__attributes["iot_device_id"]) + ".csv", "rb")
+                    imagestring                     = file.read()
+                    byteArray                       = bytes(imagestring).decode('utf8').replace("'", '"')
+                    file.close()
 
-                file                            = open(__path_to_collected_data, "rb")
+                    data                            = {"iot_device_id" : __attributes["iot_device_id"], "byteArray": byteArray}
+
+                    data                            = json.dumps(data)
+
+                    # Publish values of the iot_devices to edge device
+                    client.publish("iot-devices/backup/", data)
+
+                    os.remove(__path_to_home_directory + "backup_" + str(__attributes["iot_device_id"]) + ".csv")
+
+                file                            = open(__path_to_home_directory + "collected_data_" + str(__attributes["iot_device_id"]) + ".csv", "rb")
                 imagestring                     = file.read()
                 byteArray                       = bytes(imagestring).decode('utf8').replace("'", '"')
                 file.close()
@@ -123,7 +89,20 @@ def on_message(client, user__data, msg):
 
                 # Publish values of the iot_devices to edge device
                 client.publish("iot-devices/collected_data/", data)
-                    
+
+        if msg.topic == "edge-device/update/":
+            group           = json.loads(msg.payload)["group"]
+            update_version  = json.loads(msg.payload)["update_version"]
+
+            if group == __attributes["group"]:
+
+                if update_version != __attributes["update_version"]:
+                    mqtt_msg_json   = json.loads(msg.payload.decode('utf8').replace('\\\\','\\'))
+                    byteArray       = mqtt_msg_json["byteArray"].encode('utf-8')
+
+                    write_received_update_to_file(byteArray, update_version)
+                    client.publish("iot-devices/live_state/", json.dumps(__attributes))
+
 def generate_sensor_data():
     # Possibility that an sensor change his value. 20% is setted and the iot_device needs to be runnable for changes.
     if __attributes["is_runnable"] and random.randint(0,100) > 50:
@@ -185,10 +164,9 @@ def publish_data():
     # Publish values of the iot_devices to edge device
     client.publish("iot-devices/collected_data/", data)
 
-
 def write_collected_data_into_file(__path, __data):
      # Fieldnames
-        fnames = ['iot_device_id', 'group', 'is_runnable', 'sensor_a', 'sensor_b', 'sensor_c']
+        fnames = ['iot_device_id', 'group','update_version', 'is_runnable', 'sensor_a', 'sensor_b', 'sensor_c']
         
         # If file already exist. Add entry at the end of the file
         if os.path.isfile(__path) :
@@ -197,6 +175,7 @@ def write_collected_data_into_file(__path, __data):
                 writer = csv.DictWriter(ml_file, fieldnames=fnames)
                 writer.writerow({   'iot_device_id'     : __data["iot_device_id"],    
                                     'group'             : __data["group"],
+                                    'update_version'    : __data["update_version"],
                                     'is_runnable'       : __data["is_runnable"],
                                     'sensor_a'          : __data["sensor_a"],
                                     'sensor_b'          : __data["sensor_b"],
@@ -211,12 +190,33 @@ def write_collected_data_into_file(__path, __data):
                 writer.writeheader() 
                 writer.writerow({   'iot_device_id'     : __data["iot_device_id"],    
                                     'group'             : __data["group"],
+                                    'update_version'    : __data["update_version"],
                                     'is_runnable'       : __data["is_runnable"],
                                     'sensor_a'          : __data["sensor_a"],
                                     'sensor_b'          : __data["sensor_b"],
                                     'sensor_c'          : __data["sensor_c"]})
                 ml_file.close()
- 
+
+def write_received_update_to_file(byteArray, update_version):
+    if not os.path.isfile(__path_to_home_directory + "update_" + str(update_version) + ".txt"):
+        with open(__path_to_home_directory + "update_" + str(update_version) + ".txt", "wb") as fd:
+            fd.write(byteArray)
+            fd.close()
+
+    if os.path.isfile(__path_to_home_directory + "update_" + str(__attributes["update_version"]) + ".txt"):
+        os.remove(__path_to_home_directory + "update_" + str(__attributes["update_version"]) + ".txt")
+    
+    __attributes["update_version"] = update_version
+
+def delete_files_with_start(path, starting):
+    files_in_directory = os.listdir(path)
+    filtered_files = [file for file in files_in_directory if file.startswith(str(starting))]
+    
+    for file in filtered_files:
+	    path_to_file = os.path.join(path, file)
+	    os.remove(path_to_file)
+
+
 # Mqtt initialization, subscribtions and start client loop etc.
 client              = mqtt.Client()
 client.on_connect   = on_connect
@@ -225,6 +225,10 @@ client.connect("localhost", 1883, 60)
 client.subscribe("edge-device/#")
 client.subscribe("simulation/#") # Topic for simulation inputs    
 client.loop_start()
+
+delete_files_with_start(__path_to_home_directory, "update")
+delete_files_with_start(__path_to_home_directory, "collected")
+delete_files_with_start(__path_to_home_directory, "backup")
 
 while True:
 
@@ -240,7 +244,11 @@ while True:
         if not __write_error_in_file_once and not __no_empty_space:
             write_collected_data_into_file(__path_to_collected_data, __attributes)
             __write_error_in_file_once = True
- 
+        
+        # Need to write an error entry for the next data collecting from the edge-device
+        if not os.path.isfile(__path_to_collected_data):
+            write_collected_data_into_file(__path_to_collected_data, __attributes)
+
     check_capacitance()
     check_limits() 
 
