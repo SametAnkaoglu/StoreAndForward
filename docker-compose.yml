@@ -13,3 +13,66 @@ services:
     ports:
       - "1883:1883"
       - "9001:9001"
+
+  edge-device:
+      image: sametankaoglu/store_and_forward_edge-device:v1
+      restart: always
+      container_name: edge-device
+      network_mode: host
+      environment: 
+        - GET_BACKUP_FILES=False
+
+  iot-device-0:
+      image: sametankaoglu/store_and_forward_iot-device:v1
+      restart: always
+      container_name: iot-device_0
+      network_mode: host
+      environment: 
+        - IOT_DEVICE_ID=0
+        - SENSOR_UPPER_LIMIT=30
+        - SENSOR_LOWER_LIMIT=-30
+        - IOT_DEVICE_CAPACITANCE_MB=0.0025
+      
+  iot-device-1:
+      image: sametankaoglu/store_and_forward_iot-device:v1
+      restart: always
+      container_name: iot-device_1
+      network_mode: host
+      environment: 
+        - IOT_DEVICE_ID=1
+        - SENSOR_UPPER_LIMIT=30
+        - SENSOR_LOWER_LIMIT=-30
+        - IOT_DEVICE_CAPACITANCE_MB=0.0025
+      
+  iot-device-2:
+      image: sametankaoglu/store_and_forward_iot-device:v1
+      restart: always
+      container_name: iot-device_2
+      network_mode: host
+      environment: 
+        - IOT_DEVICE_ID=2
+        - SENSOR_UPPER_LIMIT=30
+        - SENSOR_LOWER_LIMIT=-30
+        - IOT_DEVICE_CAPACITANCE_MB=0.0025
+      
+  iot-device-3:
+      image: sametankaoglu/store_and_forward_iot-device:v1
+      restart: always
+      container_name: iot-device_3
+      network_mode: host   
+      environment: 
+        - IOT_DEVICE_ID=3
+        - SENSOR_UPPER_LIMIT=30
+        - SENSOR_LOWER_LIMIT=-30
+        - IOT_DEVICE_CAPACITANCE_MB=0.0025
+      
+  cloud:
+      image: sametankaoglu/store_and_forward_cloud:v1
+      restart: always
+      container_name: cloud
+      network_mode: host  
+      environment: 
+        - TARGET_GROUP=A
+        - TARGET_COUNT=4
+        - TARGET_UPDATE_VERSION=1
+        - JOB=1 # 1) get data from an group of iot devices, 2) publish update to a group of get data fromiot devices, 3) get data and publish update to a group of iot device

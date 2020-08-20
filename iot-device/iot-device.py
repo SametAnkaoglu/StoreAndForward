@@ -7,7 +7,7 @@ import csv
 
 # Attributes
 __attributes = {
-    "iot_device_id" : 0, # os.environ["iot_device_id"],
+    "iot_device_id" : os.environ["IOT_DEVICE_ID"],
     "group"         : "A",
     "update_version": "0.0",
     "is_runnable"   : True,
@@ -18,16 +18,16 @@ __attributes = {
 
 __edge_device_connected_with_iot_devices    = False     
 __no_empty_space                            = False     # When an empty space limit is reached 
-__path_to_collected_data                    = "/home/rgx/workspace/University/Verteilte-Systeme/iot-device/collected_data_" + str(__attributes["iot_device_id"]) + ".csv"
-__path_to_home_directory                    = "/home/rgx/workspace/University/Verteilte-Systeme/iot-device/"
+__path_to_collected_data                    = "collected_data_" + str(__attributes["iot_device_id"]) + ".csv"
+__path_to_home_directory                    = "./"
 __write_error_in_file_once                  = False
 __published_all_data                        = False
 __registered_at_edge_device                 = False
 
 # Const
-SENSOR_UPPER_LIMIT                          = 30        # int(os.environ["SENSOR_UPPER_LIMIT"])
-SENSOR_LOWER_LIMIT                          = -30       # int(os.environ["SENSOR_LOWER_LIMIT"])
-IOT_DEVICE_CAPACITANCE_MB                   = 0.0025 
+SENSOR_UPPER_LIMIT                          = int(os.environ["SENSOR_UPPER_LIMIT"])
+SENSOR_LOWER_LIMIT                          = int(os.environ["SENSOR_LOWER_LIMIT"])
+IOT_DEVICE_CAPACITANCE_MB                   = float(os.environ["IOT_DEVICE_CAPACITANCE_MB"]) 
 
 # Methods
 def on_connect(client, user__data, flags, rc):   

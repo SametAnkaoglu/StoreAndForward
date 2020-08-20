@@ -4,18 +4,21 @@ import json
 import os
 from datetime import datetime
 
-__path_to_home_directory                = "/home/rgx/workspace/University/Verteilte-Systeme/cloud/"
+# Cloud must be started at last one
+time.sleep(5) 
+
+__path_to_home_directory                = "./"
 __path_to_update_file                   = "update.txt"
-__count_of_groups                       = 0
+__count_of_groups                       = 3
 __existing_groups                       = list()        # Fill this with commandline inputs
 __edge_device_connected_with_cloud      = True         
 __publish_update                        = False
 __get_sensor_data                       = False
 __edge_device_is_able_to_go             = False
-__target_group                          = "A"
-__target_count                          = "1"
-__target_update_version                 = 1
-__job                                   = 3 # 1) get data from an group of iot devices, 2) publish update to a group of iot devices, 3) get data and publish update to a group of iot device
+__target_group                          = str(os.environ["TARGET_GROUP"]) 
+__target_count                          = str(os.environ["TARGET_COUNT"]) 
+__target_update_version                 = int(os.environ["TARGET_UPDATE_VERSION"])
+__job                                   = int(os.environ["JOB"]) # 1) get data from an group of iot devices, 2) publish update to a group of get data fromiot devices, 3) get data and publish update to a group of iot device
 
 def on_connect(client, user__data, flags, rc):
     print("Connected with result code " + str(rc))
@@ -116,7 +119,7 @@ def delete_files_with_end(path, ending):
     for file in filtered_files:
 	    path_to_file = os.path.join(path, file)
 	    os.remove(path_to_file)
-        
+
 client              = mqtt.Client()
 client.on_connect   = on_connect
 client.on_message   = on_message

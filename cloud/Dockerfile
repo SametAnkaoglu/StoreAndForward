@@ -1,6 +1,7 @@
 FROM python:3
 
 ADD cloud.py /
+ADD update.txt /
 ADD requirements.txt /
 
 RUN pip3 install -r requirements.txt
