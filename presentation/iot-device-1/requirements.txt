@@ -1,0 +1,2 @@
+# To execute -> pip3 install -r requirements.txt
+paho-mqtt
