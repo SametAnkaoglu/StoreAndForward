@@ -4,7 +4,7 @@ Practical implementation of an edge computing pattern wich was designed for an i
 ## Start
 For starting the simulation we recommend to start the simulation localy over the python scripts. The docker simulation shows undetected failure. We will work on this to fix this.
 
-### Start over python scripts (/Presentation/...)
+### Start over python scripts (StoreAndForward/presentation/...)
 1. First u need to change the path to the home directory in each python script.
 
 2. After that u can run the python scripts in the terminal with:
